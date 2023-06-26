@@ -4,6 +4,9 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWebChannel import QWebChannel
+from PyQt5.QtWebEngineWidgets import QWebEngineSettings
+from PyQt5.QtCore import QThread
+
 
 mapbox_token = 'your_mapbox_token'
 
@@ -88,14 +91,14 @@ html = """
     }}
 </script>
 </body>
-</html>
+</html> 
 """.format(mapbox_token)
 
 
 class MapboxApp(QObject):
     def __init__(self):
         super().__init__()
-
+       
         self.view = QWebEngineView()
         self.view.setHtml(html)
 
@@ -132,6 +135,7 @@ class MapboxApp(QObject):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    QWebEngineSettings.globalSettings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
 
     mapboxApp = MapboxApp()
     mapboxApp.view.show()
