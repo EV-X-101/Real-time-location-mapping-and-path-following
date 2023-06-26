@@ -18,6 +18,7 @@ dotenv.load_dotenv()
 
 
 mapbox_token = os.getenv('api_key')
+start_coordinates = [39.290273, 8.560654]  # Define your start coordinates
 
 html = """
 <!DOCTYPE html>
@@ -46,7 +47,11 @@ html = """
     var endMarker = new mapboxgl.Marker({{color: 'red'}});
     var carMarker = new mapboxgl.Marker({{color: '#78aeed'}});
     var carPathCoordinates = [];
-
+    
+     map.on('load', function() {{
+        startMarker.setLngLat([39.290273, 8.560654]).addTo(map);
+    }});
+    
     map.on('click', function(e) {{
         window.pyObj.mapClicked(e.lngLat.lng, e.lngLat.lat);
     }});
@@ -139,7 +144,7 @@ html = """
 </body>
 </html>
 
-""".format(mapbox_token)
+""".format(mapbox_token, start_coordinates)
 
 
 
@@ -155,9 +160,12 @@ class MapboxApp(QObject):
         self.view.page().setWebChannel(self.channel)
         self.view.resize(1200, 800)  # Set your desired size
 
-        self.start = None
+        self.start = None  # Set the starting point
         self.end = None
-        self.route = None
+        self.route = None,
+        self.manuever = []
+        self.current = None
+
 
         # Initialize the carTimer
         self.carTimer = QTimer()
@@ -169,6 +177,7 @@ class MapboxApp(QObject):
         if not self.start:
             self.start = [longitude, latitude]
             self.view.page().runJavaScript("setStart(%f, %f)" % (longitude, latitude))
+            print(longitude,latitude)
         elif not self.end:
             self.end = [longitude, latitude]
             self.view.page().runJavaScript("setEnd(%f, %f)" % (longitude, latitude))
@@ -184,15 +193,15 @@ class MapboxApp(QObject):
 
         # Extract the relevant information from the maneuver
         instruction = maneuver['instruction']
-        type = maneuver['type']
+        typee = maneuver['type']
         modifier = maneuver.get('modifier', '')
-
+        location = maneuver['location']
+       
         # Return the parsed maneuver
-        return {
-            'instruction': instruction,
-            'type': type,
-            'modifier': modifier
-        }
+        return (instruction,typee,modifier,location)
+        
+    
+
 
     def calculateAndSetRoute(self):
         # Call Mapbox Directions API to get a route
@@ -218,7 +227,8 @@ class MapboxApp(QObject):
                     self.route.extend(step_geometry)
 
                     maneuver = self.get_maneuver(step)
-                    print(maneuver)
+                    self.manuever.append(maneuver)
+                    # print(self.manuever)
             
             self.view.page().runJavaScript("setRoute(%s)" % json.dumps(self.route))
             # start the carTimer
@@ -233,6 +243,13 @@ class MapboxApp(QObject):
 
             # Get the next coordinate
             coord = self.route.pop(0)
+            for item in self.manuever:
+                if coord == item[-1]:
+                    car_loc = (item[0],item[1],item[-1])
+                    if car_loc!=self.current:
+                        self.current = car_loc
+                        # display self.current in the pyqt widget 
+                        print(self.current)
 
             # Move the car to the next coordinate
             self.view.page().runJavaScript("updateMarker(%f, %f)" % (coord[0], coord[1]))
@@ -255,5 +272,7 @@ if __name__ == "__main__":
 
     mapboxApp = MapboxApp()
     mapboxApp.view.show()
+    
+    mapboxApp.mapClicked(start_coordinates[0],start_coordinates[-1])
 
     sys.exit(app.exec_())
