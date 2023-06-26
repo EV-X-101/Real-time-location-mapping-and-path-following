@@ -2,7 +2,7 @@
 Real-time location mapping and path following
 Sure, here's an example README file for your project:
 
-```markdown
+
 # Real-Time Mapbox Path Tracer in PyQt
 
 This is a Python application that displays a Mapbox map using PyQt. It allows the user to select a start and end point on the map, calculates the route between these points using the Mapbox Directions API, and displays a car marker that moves along the route in real-time.
@@ -49,4 +49,4 @@ Click on the map to set the start point (marked in green), then click again to s
 
 This is a basic implementation and does not include any error handling or optimization. You should add these in a production environment. Also, you need to replace the `calculateAndSetRoute` method with an actual call to the Mapbox Directions API.
 
-```
+
