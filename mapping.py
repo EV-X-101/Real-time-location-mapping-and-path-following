@@ -6,12 +6,16 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtWebEngineWidgets import QWebEngineSettings
 from PyQt5.QtCore import QThread
-import dotenv
 import os
+import dotenv
+
+import requests
 
 dotenv.load_dotenv()
 
-mapbox_token = os.getenv('MAP_BOX_API_PK')
+
+
+mapbox_token = os.getenv('api_key')
 
 html = """
 <!DOCTYPE html>
@@ -123,11 +127,20 @@ class MapboxApp(QObject):
             self.view.page().runJavaScript("setEnd(%f, %f)" % (longitude, latitude))
             self.calculateAndSetRoute()
 
+
     def calculateAndSetRoute(self):
-        # Replace with actual call to Mapbox Directions API
-        self.route = [self.start, self.end]
+        # Call Mapbox Directions API to get a route
+        response = requests.get(
+            f"https://api.mapbox.com/directions/v5/mapbox/driving/{0},{1};{2},{3}?{os.getenv('private')}{4}&geometries=geojson".format(
+                self.start[0], self.start[1], self.end[0], self.end[1], mapbox_token
+            )
+        )
+        data = response.json()
+
+        self.route = data['routes'][0]['geometry']['coordinates']
         self.view.page().runJavaScript("setRoute(%s)" % json.dumps(self.route))
         self.moveCarAlongRoute()
+
 
     def moveCarAlongRoute(self):
         # Simulate car movement
