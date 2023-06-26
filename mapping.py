@@ -12,8 +12,8 @@ html = """
 <html>
 <head>
     <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        body {{ margin: 0; padding: 0; }}
+        #map {{ position: absolute; top: 0; bottom: 0; width: 100%; }}
     </style>
 </head>
 <body>
@@ -22,74 +22,75 @@ html = """
 <link href='https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css' rel='stylesheet' />
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <script>
-    mapboxgl.accessToken = '%s';
-    var map = new mapboxgl.Map({
+    mapboxgl.accessToken = '{0}';
+    var map = new mapboxgl.Map({{
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v11',
         center: [-96, 37.8],
         zoom: 3
-    });
+    }});
 
-    var startMarker = new mapboxgl.Marker({color: 'green'})
-    var endMarker = new mapboxgl.Marker({color: 'red'})
-    var carMarker = new mapboxgl.Marker({color: 'blue'})
+    var startMarker = new mapboxgl.Marker({{color: 'green'}});
+    var endMarker = new mapboxgl.Marker({{color: 'red'}});
+    var carMarker = new mapboxgl.Marker({{color: 'blue'}});
 
-    map.on('click', function(e) {
-        window.pyObj.mapClicked(e.lngLat.lng, e.lngLat.lat)
-    });
+    map.on('click', function(e) {{
+        window.pyObj.mapClicked(e.lngLat.lng, e.lngLat.lat);
+    }});
 
-    new QWebChannel(qt.webChannelTransport, function (channel) {
+    new QWebChannel(qt.webChannelTransport, function (channel) {{
         window.pyObj = channel.objects.pyObj;
-    });
+    }});
 
-    function updateMarker(longitude, latitude) {
+    function updateMarker(longitude, latitude) {{
         carMarker.setLngLat([longitude, latitude]).addTo(map);
-    }
+    }}
 
-    function setStart(longitude, latitude) {
+    function setStart(longitude, latitude) {{
         startMarker.setLngLat([longitude, latitude]).addTo(map);
-    }
+    }}
 
-    function setEnd(longitude, latitude) {
+    function setEnd(longitude, latitude) {{
         endMarker.setLngLat([longitude, latitude]).addTo(map);
-    }
+    }}
 
-    function setRoute(coordinates) {
-        if (map.getSource('route')) {
+    function setRoute(coordinates) {{
+        if (map.getSource('route')) {{
             map.removeLayer('route');
             map.removeSource('route');
-        }
+        }}
 
-        map.addSource('route', {
+        map.addSource('route', {{
             'type': 'geojson',
-            'data': {
+            'data': {{
                 'type': 'Feature',
-                'properties': {},
-                'geometry': {
+                'properties': {{}},
+                'geometry': {{
                     'type': 'LineString',
                     'coordinates': coordinates
-                }
-            }
-        });
+                }}
+            }}
+        }});
 
-        map.addLayer({
+        map.addLayer({{
             'id': 'route',
             'type': 'line',
             'source': 'route',
-            'layout': {
+            'layout': {{
                 'line-join': 'round',
                 'line-cap': 'round'
-            },
-            'paint': {
+            }},
+            'paint': {{
                 'line-color': 'blue',
                 'line-width': 6
-            }
-        });
-    }
+            }}
+        }});
+    }}
 </script>
 </body>
 </html>
-""" % mapbox_token
+""".format(mapbox_token)
+
 
 class MapboxApp(QObject):
     def __init__(self):
