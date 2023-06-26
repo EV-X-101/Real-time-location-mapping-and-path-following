@@ -6,9 +6,12 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtWebEngineWidgets import QWebEngineSettings
 from PyQt5.QtCore import QThread
+import dotenv
+import os
 
+dotenv.load_dotenv()
 
-mapbox_token = 'your_mapbox_token'
+mapbox_token = os.getenv('api_key')
 
 html = """
 <!DOCTYPE html>
