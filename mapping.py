@@ -11,7 +11,7 @@ import os
 
 dotenv.load_dotenv()
 
-mapbox_token = os.getenv('api_key')
+mapbox_token = os.getenv('MAP_BOX_API_PK')
 
 html = """
 <!DOCTYPE html>
