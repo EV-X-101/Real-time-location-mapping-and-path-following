@@ -8,6 +8,8 @@ from PyQt5.QtWebEngineWidgets import QWebEngineSettings
 from PyQt5.QtCore import QThread
 import os
 import dotenv
+from geopy import distance
+from PyQt5.QtCore import QTimer
 
 import requests
 
@@ -36,13 +38,14 @@ html = """
     var map = new mapboxgl.Map({{
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v11',
-        center: [-96, 37.8],
-        zoom: 3
+        center: [39.290843,8.562869],  // Update center here,
+        zoom: 15
     }});
 
     var startMarker = new mapboxgl.Marker({{color: 'green'}});
     var endMarker = new mapboxgl.Marker({{color: 'red'}});
-    var carMarker = new mapboxgl.Marker({{color: 'blue'}});
+    var carMarker = new mapboxgl.Marker({{color: '#78aeed'}});
+    var carPathCoordinates = [];
 
     map.on('click', function(e) {{
         window.pyObj.mapClicked(e.lngLat.lng, e.lngLat.lat);
@@ -54,6 +57,42 @@ html = """
 
     function updateMarker(longitude, latitude) {{
         carMarker.setLngLat([longitude, latitude]).addTo(map);
+
+        carPathCoordinates.push([longitude, latitude]);
+        drawCarPath();
+    }}
+
+    function drawCarPath() {{
+        if (map.getSource('carPath')) {{
+            map.removeLayer('carPath');
+            map.removeSource('carPath');
+        }}
+
+        map.addSource('carPath', {{
+            'type': 'geojson',
+            'data': {{
+                'type': 'Feature',
+                'properties': {{}},
+                'geometry': {{
+                    'type': 'LineString',
+                    'coordinates': carPathCoordinates
+                }}
+            }}
+        }});
+
+        map.addLayer({{
+            'id': 'carPath',
+            'type': 'line',
+            'source': 'carPath',
+            'layout': {{
+                'line-join': 'round',
+                'line-cap': 'round'
+            }},
+            'paint': {{
+                'line-color': 'white',
+                'line-width': 3
+            }}
+        }});
     }}
 
     function setStart(longitude, latitude) {{
@@ -98,8 +137,10 @@ html = """
     }}
 </script>
 </body>
-</html> 
+</html>
+
 """.format(mapbox_token)
+
 
 
 class MapboxApp(QObject):
@@ -112,10 +153,16 @@ class MapboxApp(QObject):
         self.channel = QWebChannel()
         self.channel.registerObject("pyObj", self)
         self.view.page().setWebChannel(self.channel)
+        self.view.resize(1200, 800)  # Set your desired size
 
         self.start = None
         self.end = None
         self.route = None
+
+        # Initialize the carTimer
+        self.carTimer = QTimer()
+        self.carTimer.timeout.connect(self.moveCarAlongRoute)
+
 
     @pyqtSlot(float, float)
     def mapClicked(self, longitude, latitude):
@@ -128,26 +175,79 @@ class MapboxApp(QObject):
             self.calculateAndSetRoute()
 
 
+    def get_maneuver(self, step):
+        """
+        Function to parse the maneuver from a given step.
+        """
+        # Extract the maneuver from the step
+        maneuver = step['maneuver']
+
+        # Extract the relevant information from the maneuver
+        instruction = maneuver['instruction']
+        type = maneuver['type']
+        modifier = maneuver.get('modifier', '')
+
+        # Return the parsed maneuver
+        return {
+            'instruction': instruction,
+            'type': type,
+            'modifier': modifier
+        }
+
     def calculateAndSetRoute(self):
         # Call Mapbox Directions API to get a route
+        source = ",".join(map(str, self.start))
+        destination = ",".join(map(str, self.end))
+        
+        # Call Mapbox Directions API to get a route
         response = requests.get(
-            f"https://api.mapbox.com/directions/v5/mapbox/driving/{0},{1};{2},{3}?{os.getenv('private')}{4}&geometries=geojson".format(
-                self.start[0], self.start[1], self.end[0], self.end[1], mapbox_token
-            )
+            f"https://api.mapbox.com/directions/v5/mapbox/driving/{source}%3B{destination}?alternatives=false&geometries=geojson&language=en&overview=full&steps=true&max_width=0.9&max_weight=0.5&access_token={os.getenv('private')}"
         )
         data = response.json()
 
-        self.route = data['routes'][0]['geometry']['coordinates']
-        self.view.page().runJavaScript("setRoute(%s)" % json.dumps(self.route))
-        self.moveCarAlongRoute()
+        # Check if 'routes' in data
+        if 'routes' in data and data['routes']:
+            # Here we change the way we get the route information. 
+            # Instead of taking the geometry directly, we iterate over the steps of the route
+            # Each step has a geometry, which we use directly and add to the route
+            self.route = []
+            for leg in data['routes'][0]['legs']:
+                for step in leg['steps']:
+                    # use each step's geometry and add to the route
+                    step_geometry = step['geometry']['coordinates']
+                    self.route.extend(step_geometry)
+
+                    maneuver = self.get_maneuver(step)
+                    print(maneuver)
+            
+            self.view.page().runJavaScript("setRoute(%s)" % json.dumps(self.route))
+            # start the carTimer
+            self.carTimer.start(500)
 
 
     def moveCarAlongRoute(self):
-        # Simulate car movement
-        for coord in self.route:
+            # Stop the QTimer if we've reached the end of the route
+            if not self.route:
+                self.carTimer.stop()
+                return
+
+            # Get the next coordinate
+            coord = self.route.pop(0)
+
+            # Move the car to the next coordinate
             self.view.page().runJavaScript("updateMarker(%f, %f)" % (coord[0], coord[1]))
-            QApplication.processEvents()
-            QThread.msleep(500)
+
+            # Calculate the time to the next coordinate based on distance and speed
+            if self.route:
+                next_coord = self.route[0]
+                dist = distance.distance(coord, next_coord).km
+                speed = 50  # Assume a speed of 50 km/h, adjust as necessary
+                time_to_next_coord = (dist / speed) * 3600  # in seconds
+
+                # Set the QTimer interval to the time to the next coordinate
+                self.carTimer.setInterval(round(time_to_next_coord * 500))  # QTimer works with milliseconds
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
