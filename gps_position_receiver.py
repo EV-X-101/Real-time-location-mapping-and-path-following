@@ -9,9 +9,10 @@ serversocket = socket.socket()
 
 # Get the IP address from the environment variable
 RPI_IP_ADDRESS = os.environ.get('RPI_IP_ADDRESS')
+print(RPI_IP_ADDRESS)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect((RPI_IP_ADDRESS, 5000)) # Replace with Raspberry Pi IP address
+sock.connect(('192.168.0.77', 5000)) # Replace with Raspberry Pi IP address
 print('Socket connection established')
 
 while True:
