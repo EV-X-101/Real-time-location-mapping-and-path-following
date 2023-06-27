@@ -13,6 +13,7 @@ from PyQt5.QtCore import QTimer
 
 import requests
 
+
 dotenv.load_dotenv()
 
 
@@ -272,7 +273,7 @@ if __name__ == "__main__":
 
     mapboxApp = MapboxApp()
     mapboxApp.view.show()
-    
+
     mapboxApp.mapClicked(start_coordinates[0],start_coordinates[-1])
 
     sys.exit(app.exec_())
